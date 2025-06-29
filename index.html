@@ -180,27 +180,37 @@
         selectedImages.add(index);
       }
     }
+  function submitForm() {
+    const usage = document.getElementById('usage').value;
+    const otherUsage = document.getElementById('otherUsage').value;
+    const brand = document.getElementById('brand').value;
+    const description = document.getElementById('description').value;
+    const elements = document.getElementById('elements').value;
+    const styles = [...document.querySelectorAll('#styleCheckboxes input:checked')].map(cb => cb.value).join(', ');
+    const likedImages = Array.from(selectedImages).map(i => `圖 ${i + 1}`).join(', ') || "未選擇";
 
-    function submitForm() {
-      const usage = document.getElementById('usage').value;
-      const otherUsage = document.getElementById('otherUsage').value;
-      const brand = document.getElementById('brand').value;
-      const description = document.getElementById('description').value;
-      const elements = document.getElementById('elements').value;
-      const styles = [...document.querySelectorAll('#styleCheckboxes input:checked')].map(cb => cb.value).join(', ');
-      const likedImages = Array.from(selectedImages).map(i => `圖 ${i}`).join(', ') || "未選擇";
+    const result = {
+      usage: usage === '其他' ? otherUsage : usage,
+      brand: brand,
+      description: description,
+      styles: styles,
+      elements: elements,
+      likedImages: likedImages
+    };
 
-      const result = {
-        預計使用場景: usage === '其他' ? otherUsage : usage,
-        品牌名稱: brand,
-        品牌簡介: description,
-        品牌風格: styles,
-        想加入元素: elements,
-        喜歡的圖: likedImages
-      };
+    // ✅ 傳送到 Google Sheets 的 Apps Script
+    fetch("https://script.google.com/macros/s/AKfycby03JY5arbJyy0tOE2YuqdIMxX072zgsmLHmPUOclGsUNjqIvv6PzmIw9U9GMNB6A/exec", {
+      method: "POST",
+      body: JSON.stringify(result)
+    }).then(() => {
+      alert("已成功送出，感謝填寫！");
+    }).catch((err) => {
+      alert("送出失敗：" + err.message);
+    });
 
-      alert("需求已送出：\n" + JSON.stringify(result, null, 2));
-    }
-  </script>
+    // ✅ 這裡也可以加上寄 EmailJS
+    // emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", result);
+  }
+</script>
 </body>
 </html>
