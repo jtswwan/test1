@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+  <!-- 🔁 放在 <head> 中：加上 LIFF SDK -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI風格引導問卷</title>
@@ -106,81 +109,93 @@
     </div>
   </div>
 
-  <script>
-    let currentSlide = 0;
-    const slides = document.querySelectorAll('.slide');
-    let regenerateCount = 0;
-    const selectedImages = new Set();
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  let regenerateCount = 0;
+  const selectedImages = new Set();
+  let userId = "";
 
-    function showSlide(index) {
-      slides.forEach((slide, i) => {
-        slide.classList.toggle('active', i === index);
-      });
-      currentSlide = index;
+  window.onload = async function () {
+    await liff.init({ liffId: "2007667595-X0Gx0BwM" });
+    if (!liff.isLoggedIn()) {
+      liff.login();
+    } else {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
     }
+  }
 
-    function nextSlide() {
-      if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
-    }
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === index);
+    });
+    currentSlide = index;
+  }
 
-    function prevSlide() {
-      if (currentSlide > 0) showSlide(currentSlide - 1);
-    }
+  function nextSlide() {
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
 
-    function toggleOtherUsage() {
-      const usage = document.getElementById("usage").value;
-      const otherInput = document.getElementById("otherUsage");
-      otherInput.style.display = usage === "其他" ? "block" : "none";
-    }
+  function prevSlide() {
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
 
-    function addCustomStyle() {
-      const input = document.getElementById("customStyleInput");
-      const value = input.value.trim();
-      if (value) {
-        const checkboxGroup = document.getElementById("styleCheckboxes");
-        const label = document.createElement("label");
-        label.innerHTML = `<input type="checkbox" value="${value}" checked onchange="updateStyleSliders()"> ${value}`;
-        checkboxGroup.appendChild(label);
-        input.value = "";
-        updateStyleSliders();
-      }
-    }
+  function toggleOtherUsage() {
+    const usage = document.getElementById("usage").value;
+    const otherInput = document.getElementById("otherUsage");
+    otherInput.style.display = usage === "其他" ? "block" : "none";
+  }
 
-    function updateStyleSliders() {
-      const checkedStyles = document.querySelectorAll('#styleCheckboxes input:checked');
-      const styleSliderDiv = document.getElementById("styleSliders");
-      styleSliderDiv.innerHTML = "";
-      checkedStyles.forEach(cb => {
-        const wrapper = document.createElement("div");
-        wrapper.classList.add("slider-label");
-        wrapper.innerHTML = `<label>${cb.value}</label><input type="range" min="0" max="100" value="50">`;
-        styleSliderDiv.appendChild(wrapper);
-      });
+  function addCustomStyle() {
+    const input = document.getElementById("customStyleInput");
+    const value = input.value.trim();
+    if (value) {
+      const checkboxGroup = document.getElementById("styleCheckboxes");
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" value="${value}" checked onchange="updateStyleSliders()"> ${value}`;
+      checkboxGroup.appendChild(label);
+      input.value = "";
+      updateStyleSliders();
     }
+  }
 
-    function startImageGeneration() {
-      regenerateImage();
-    }
+  function updateStyleSliders() {
+    const checkedStyles = document.querySelectorAll('#styleCheckboxes input:checked');
+    const styleSliderDiv = document.getElementById("styleSliders");
+    styleSliderDiv.innerHTML = "";
+    checkedStyles.forEach(cb => {
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("slider-label");
+      wrapper.innerHTML = `<label>${cb.value}</label><input type="range" min="0" max="100" value="50">`;
+      styleSliderDiv.appendChild(wrapper);
+    });
+  }
 
-    function regenerateImage() {
-      regenerateCount++;
-      document.querySelectorAll(".preview-box span").forEach((span, index) => {
-        span.innerText = `圖 ${index + 1}（已更新）`;
-      });
-      if (regenerateCount >= 2) {
-        document.getElementById("contactDesigner").style.display = "block";
-      }
-    }
+  function startImageGeneration() {
+    regenerateImage();
+  }
 
-    function toggleImageSelection(el, index) {
-      el.classList.toggle("selected");
-      if (selectedImages.has(index)) {
-        selectedImages.delete(index);
-      } else {
-        selectedImages.add(index);
-      }
+  function regenerateImage() {
+    regenerateCount++;
+    document.querySelectorAll(".preview-box span").forEach((span, index) => {
+      span.innerText = `圖 ${index + 1}（已更新）`;
+    });
+    if (regenerateCount >= 2) {
+      document.getElementById("contactDesigner").style.display = "block";
     }
-  function submitForm() {
+  }
+
+  function toggleImageSelection(el, index) {
+    el.classList.toggle("selected");
+    if (selectedImages.has(index)) {
+      selectedImages.delete(index);
+    } else {
+      selectedImages.add(index);
+    }
+  }
+
+  async function submitForm() {
     const usage = document.getElementById('usage').value;
     const otherUsage = document.getElementById('otherUsage').value;
     const brand = document.getElementById('brand').value;
@@ -190,6 +205,7 @@
     const likedImages = Array.from(selectedImages).map(i => `圖 ${i + 1}`).join(', ') || "未選擇";
 
     const result = {
+      userId: userId,
       usage: usage === '其他' ? otherUsage : usage,
       brand: brand,
       description: description,
@@ -198,18 +214,24 @@
       likedImages: likedImages
     };
 
-    // ✅ 傳送到 Google Sheets 的 Apps Script
-    fetch("https://script.google.com/macros/s/AKfycby03JY5arbJyy0tOE2YuqdIMxX072zgsmLHmPUOclGsUNjqIvv6PzmIw9U9GMNB6A/exec", {
-      method: "POST",
-      body: JSON.stringify(result)
-    }).then(() => {
-      alert("已成功送出，感謝填寫！");
-    }).catch((err) => {
-      alert("送出失敗：" + err.message);
-    });
+    try {
+      await fetch("https://script.google.com/macros/s/AKfycby03JY5arbJyy0tOE2YuqdIMxX072zgsmLHmPUOclGsUNjqIvv6PzmIw9U9GMNB6A/exec", {
+        method: "POST",
+        body: JSON.stringify(result)
+      });
 
-    // ✅ 這裡也可以加上寄 EmailJS
-    // emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", result);
+      // 🟢 LINE 官方發送訊息通知
+      await liff.sendMessages([{
+        type: "text",
+        text: "✅ 感謝填寫！我們已收到您的資料，設計師會盡快聯繫您。"
+      }]);
+
+      // 🟢 可選：結束 LIFF 或跳感謝畫面
+      liff.closeWindow();
+
+    } catch (err) {
+      alert("送出失敗：" + err.message);
+    }
   }
 </script>
 </body>
